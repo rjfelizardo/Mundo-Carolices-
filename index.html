@@ -520,7 +520,7 @@ function retornoPagamento() {
     var msg = "Olá! Já fiz o pagamento do meu pedido pelo site 💜\n\n" + pedido.replace(/^[^\n]*\n\n/, "");
     wa.href = "https://wa.me/" + LOJA.whatsapp + "?text=" + encodeURIComponent(msg);
     wa.hidden = false;
-    sacola = {}; salvar();
+    sacola = {}; salvar(); renderSacola();
   }
   document.getElementById("banner").hidden = false;
   try { window.history.replaceState(null, "", window.location.pathname); } catch (e) {}
