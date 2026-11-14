@@ -169,6 +169,21 @@ footer img { width: 56px; height: 56px; border-radius: 50%; }
   font-weight: 800; padding: 13px; border-radius: 999px; box-shadow: 0 3px 0 #1a7a33;
 }
 .send[aria-disabled="true"] { background: #b9a3c4; box-shadow: none; pointer-events: none; }
+.pay {
+  display: block; width: 100%; border: 0; cursor: pointer; text-align: center;
+  background: var(--pink); color: #fff; font-weight: 800; font-size: 1rem;
+  padding: 13px; border-radius: 999px; box-shadow: 0 3px 0 #b30f5c; margin-bottom: 10px;
+}
+.pay[aria-disabled="true"] { background: #d9b6c9; box-shadow: none; cursor: not-allowed; }
+.send.alt { background: #fff; color: #1a7a33; border: 2px solid #25a244; box-shadow: none; padding: 10px; font-size: .92rem; }
+.send.alt[aria-disabled="true"] { color: #8f7aa0; border-color: #b9a3c4; background: #fff; }
+.err { color: #b00020; font-weight: 700; font-size: .88rem; margin: 0 0 10px; }
+.err:empty { display: none; }
+.banner { background: var(--yellow); color: var(--purple-deep); }
+.banner .wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding-top: 12px; padding-bottom: 12px; }
+.banner p { margin: 0; font-weight: 800; flex: 1 1 240px; }
+.banner a { background: var(--purple); color: #fff; text-decoration: none; font-weight: 800; padding: 8px 16px; border-radius: 999px; }
+.banner button { background: transparent; border: 2px solid var(--purple-deep); color: var(--purple-deep); border-radius: 999px; font-weight: 800; padding: 6px 14px; cursor: pointer; }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .veil, .drawer { transition: none; }
@@ -188,6 +203,13 @@ footer img { width: 56px; height: 56px; border-radius: 50%; }
     </button>
   </div>
 </header>
+<div class="banner" id="banner" hidden>
+  <div class="wrap">
+    <p id="bannerTxt"></p>
+    <a id="bannerWa" href="#" target="_blank" rel="noopener" hidden>Enviar pelo WhatsApp</a>
+    <button id="bannerX" type="button">Fechar</button>
+  </div>
+</div>
 
 <main id="topo">
   <div class="hero">
@@ -274,7 +296,9 @@ footer img { width: 56px; height: 56px; border-radius: 50%; }
   <div class="d-foot">
     <div class="total"><span>Total dos produtos</span><span id="total">R$ 0,00</span></div>
     <p class="note">O frete é combinado no WhatsApp.</p>
-    <a class="send" id="send" href="#" target="_blank" rel="noopener" aria-disabled="true">Enviar pedido pelo WhatsApp</a>
+    <button class="pay" id="pay" type="button" aria-disabled="true">Pagar agora (Pix ou cartão)</button>
+    <p class="err" id="payErr" role="alert"></p>
+    <a class="send alt" id="send" href="#" target="_blank" rel="noopener" aria-disabled="true">Prefiro combinar pelo WhatsApp</a>
   </div>
 </aside>
 
@@ -283,7 +307,8 @@ footer img { width: 56px; height: 56px; border-radius: 50%; }
 var LOJA = {
   nome: "Mundo de Carolices",
   whatsapp: "5574999520346",       // DDI + DDD + número, só dígitos
-  instagram: "mundodecarolices"   // sem o @
+  instagram: "mundodecarolices",  // sem o @
+  pagamentoUrl: "https://carolices-pagamento.rjfelizardo.workers.dev"
 };
 
 /* Produtos de exemplo. Para o site real, edite esta lista (nome, preço, categoria, cores). */
@@ -398,12 +423,14 @@ function renderSacola() {
   atualizarLink(its, total);
 }
 
+var ULTIMA_MSG = "";
 function atualizarLink(its, total) {
   var nome = document.getElementById("fNome").value.trim();
   var send = document.getElementById("send");
   var ok = its.length > 0 && nome.length > 0;
   send.setAttribute("aria-disabled", ok ? "false" : "true");
-  if (!ok) { send.setAttribute("href", "#"); return; }
+  document.getElementById("pay").setAttribute("aria-disabled", ok ? "false" : "true");
+  if (!ok) { send.setAttribute("href", "#"); ULTIMA_MSG = ""; return; }
   var msg = "Olá! Quero fazer um pedido no " + LOJA.nome + " 💜\n\n";
   its.forEach(function (i) { msg += "• " + i.q + "x " + i.p.nome + " — " + money(i.q * i.p.preco) + "\n"; });
   msg += "\nTotal dos produtos: " + money(total) + "\n\nNome: " + nome +
@@ -412,6 +439,7 @@ function atualizarLink(its, total) {
   var obs = document.getElementById("fObs").value.trim();
   if (local) msg += "\nBairro/CEP: " + local;
   if (obs) msg += "\nObservações: " + obs;
+  ULTIMA_MSG = msg;
   send.setAttribute("href", "https://wa.me/" + LOJA.whatsapp + "?text=" + encodeURIComponent(msg));
 }
 
@@ -432,6 +460,8 @@ document.addEventListener("click", function (e) {
   else if (t.id === "openBag") abrir(true);
   else if (t.id === "closeBag") abrir(false);
   else if (t.id === "send" && t.getAttribute("aria-disabled") === "true") e.preventDefault();
+  else if (t.id === "pay") pagar();
+  else if (t.id === "bannerX") document.getElementById("banner").hidden = true;
 });
 document.getElementById("veil").addEventListener("click", function () { abrir(false); });
 document.addEventListener("keydown", function (e) { if (e.key === "Escape") abrir(false); });
@@ -443,7 +473,60 @@ document.getElementById("form").addEventListener("submit", function (e) { e.prev
 
 document.getElementById("igLink").href = "https://instagram.com/" + LOJA.instagram;
 document.getElementById("waLink").href = "https://wa.me/" + LOJA.whatsapp;
-renderChips(); renderGrid(); renderSacola();
+
+function pagar() {
+  var btn = document.getElementById("pay"), err = document.getElementById("payErr");
+  if (btn.getAttribute("aria-disabled") === "true") {
+    err.textContent = itens().length ? "Preencha seu nome para continuar." : "Sua sacola está vazia.";
+    return;
+  }
+  err.textContent = "";
+  btn.setAttribute("aria-disabled", "true");
+  btn.textContent = "Gerando pagamento...";
+  var corpo = {
+    itens: itens().map(function (i) { return { id: i.p.id, q: i.q }; }),
+    nome: document.getElementById("fNome").value.trim(),
+    entrega: document.getElementById("fEntrega").value,
+    local: document.getElementById("fLocal").value.trim(),
+    obs: document.getElementById("fObs").value.trim()
+  };
+  fetch(LOJA.pagamentoUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corpo) })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (d && d.url) {
+        try { localStorage.setItem("carolices_pedido", ULTIMA_MSG); } catch (e) {}
+        window.location.href = d.url;
+      } else { throw new Error((d && d.erro) || "erro"); }
+    })
+    .catch(function () {
+      err.textContent = "Não consegui gerar o pagamento agora. Tente de novo ou combine pelo WhatsApp.";
+      btn.textContent = "Pagar agora (Pix ou cartão)";
+      btn.setAttribute("aria-disabled", "false");
+    });
+}
+
+function retornoPagamento() {
+  var m = /[?&]pagamento=(ok|erro|pendente)/.exec(window.location.search);
+  if (!m) return;
+  var st = m[1], txt = document.getElementById("bannerTxt"), wa = document.getElementById("bannerWa");
+  var pedido = "";
+  try { pedido = localStorage.getItem("carolices_pedido") || ""; } catch (e) {}
+  if (st === "erro") {
+    txt.textContent = "O pagamento não foi concluído. Sua sacola continua guardada, é só tentar de novo.";
+  } else {
+    txt.textContent = st === "ok"
+      ? "Pagamento aprovado! Obrigada pela compra. Envie o pedido pelo WhatsApp para combinarmos a entrega."
+      : "Pagamento pendente. Assim que o Mercado Pago confirmar, combinamos a entrega pelo WhatsApp.";
+    var msg = "Olá! Já fiz o pagamento do meu pedido pelo site 💜\n\n" + pedido.replace(/^[^\n]*\n\n/, "");
+    wa.href = "https://wa.me/" + LOJA.whatsapp + "?text=" + encodeURIComponent(msg);
+    wa.hidden = false;
+    sacola = {}; salvar();
+  }
+  document.getElementById("banner").hidden = false;
+  try { window.history.replaceState(null, "", window.location.pathname); } catch (e) {}
+}
+
+renderChips(); renderGrid(); renderSacola(); retornoPagamento();
 </script>
 </body>
 </html>
