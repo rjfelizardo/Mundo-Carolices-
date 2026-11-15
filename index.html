@@ -76,16 +76,18 @@ button { font-family: inherit; }
 @media (max-width: 759px) { .hero::after { background: linear-gradient(180deg, rgba(255,247,252,0) 0%, rgba(255,247,252,0) 38%, rgba(255,247,252,.8) 62%, rgba(255,247,252,.88) 100%); } }
 @media (prefers-reduced-motion: reduce) { .hero-video { display: none; } }
 .hero .wrap { display: grid; gap: 20px; align-items: center; grid-template-columns: 1fr; }
-.hero-logo { justify-self: center; width: min(220px, 60vw); order: -1; }
-.hero-logo img { width: 100%; height: auto; aspect-ratio: 1 / 1; object-fit: contain; border-radius: 50%; box-shadow: 0 10px 30px rgba(106, 26, 143, .25); }
+.hero-logo { position: relative; z-index: 2; width: min(170px, 46vw); margin: 0 auto 4px; }
+.hero-logo img { display: block; width: 100%; height: auto; aspect-ratio: 1 / 1; object-fit: contain; filter: drop-shadow(0 8px 14px rgba(74, 15, 102, .3)); }
 .eyebrow { display: inline-block; background: var(--yellow); color: var(--purple-deep); font-weight: 800; font-size: .85rem; padding: 4px 12px; border-radius: 999px; margin-bottom: 12px; }
 .hero h1 { font-size: clamp(2rem, 7vw, 3.2rem); color: var(--purple); }
 .hero h1 em { font-style: normal; color: var(--pink); }
 .hero p { max-width: 46ch; color: var(--muted); font-size: 1.1rem; margin: 12px 0 18px; }
 .cta { display: inline-block; background: var(--purple); color: #fff; text-decoration: none; font-weight: 800; padding: 12px 22px; border-radius: 999px; box-shadow: 0 3px 0 var(--purple-deep); }
 @media (min-width: 760px) {
-  .hero .wrap { grid-template-columns: 1.2fr .8fr; }
-  .hero-logo { order: 0; width: 280px; }
+  .hero-logo { position: absolute; top: 50%; right: clamp(16px, 3.5vw, 56px); transform: translateY(-50%); width: clamp(170px, 17vw, 210px); margin: 0; }
+}
+@media (min-width: 760px) and (max-width: 1100px) {
+  .hero .wrap { padding-right: 200px; }
 }
 
 /* Vitrine */
@@ -200,7 +202,7 @@ footer img { width: 44px; height: 44px; border-radius: 50%; }
 <header class="top">
   <div class="wrap">
     <a class="brand" href="#topo" aria-label="Mundo de Carolices, início">
-      <img src="logo.png" alt="" width="48" height="48">
+      <img src="avatar.png" alt="" width="48" height="48">
       <span>Mundo de <b>Carolices</b></span>
     </a>
     <button class="bag-btn" id="openBag" type="button" aria-controls="drawer">
@@ -219,6 +221,7 @@ footer img { width: 44px; height: 44px; border-radius: 50%; }
 <main id="topo">
   <div class="hero">
     <video class="hero-video" src="fundo.mp4" poster="fundo-poster.jpg" autoplay muted loop playsinline preload="auto" aria-hidden="true" tabindex="-1"></video>
+    <div class="hero-logo"><img src="logo-hero.png" alt="Logo Mundo de Carolices" width="190" height="190"></div>
     <div class="wrap">
       <div>
         <span class="eyebrow">Feito à mão, com carinho</span>
@@ -226,7 +229,6 @@ footer img { width: 44px; height: 44px; border-radius: 50%; }
         <p>Escolha seus preferidos, monte a sacola e envie o pedido direto pelo WhatsApp. A Carolina confirma tudo com você.</p>
         <a class="cta" href="#produtos">Ver produtos</a>
       </div>
-      <div class="hero-logo"><img src="logo.png" alt="Logo Mundo de Carolices" width="280" height="280"></div>
     </div>
   </div>
 
