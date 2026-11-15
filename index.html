@@ -71,9 +71,9 @@ button { font-family: inherit; }
 /* Apresentação */
 .hero { position: relative; overflow: hidden; padding: 36px 0 32px; background: var(--pink-soft); }
 .hero-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
-.hero::after { content: ""; position: absolute; inset: 0; z-index: 1; background: linear-gradient(90deg, rgba(255,247,252,.9) 0%, rgba(255,247,252,.7) 55%, rgba(255,247,252,.35) 100%); }
+.hero::after { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: linear-gradient(90deg, rgba(255,247,252,.88) 0%, rgba(255,247,252,.8) 40%, rgba(255,247,252,.3) 60%, rgba(255,247,252,0) 76%); }
 .hero .wrap { position: relative; z-index: 2; }
-@media (max-width: 759px) { .hero::after { background: rgba(255,247,252,.72); } }
+@media (max-width: 759px) { .hero::after { background: linear-gradient(180deg, rgba(255,247,252,0) 0%, rgba(255,247,252,0) 38%, rgba(255,247,252,.8) 62%, rgba(255,247,252,.88) 100%); } }
 @media (prefers-reduced-motion: reduce) { .hero-video { display: none; } }
 .hero .wrap { display: grid; gap: 20px; align-items: center; grid-template-columns: 1fr; }
 .hero-logo { justify-self: center; width: min(220px, 60vw); order: -1; }
