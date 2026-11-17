@@ -143,6 +143,18 @@ section { padding: 36px 0 8px; }
 .steps h3 { font-size: 1.05rem; color: var(--purple-deep); margin-bottom: 2px; }
 .steps p { margin: 0; color: var(--muted); font-size: .95rem; }
 
+/* Chaveiro personalizado */
+.custom { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); align-items: start; }
+.drop { display: grid; place-items: center; align-content: center; gap: 8px; min-height: 200px; padding: 16px; text-align: center; background: #fff; border: 3px dashed var(--pink); border-radius: 20px; color: var(--purple); font-weight: 800; cursor: pointer; }
+.drop:hover, .drop:focus-within { background: var(--pink-soft); }
+.drop img { max-width: 100%; max-height: 240px; border-radius: 14px; object-fit: contain; }
+.drop img[hidden] { display: none; }
+.drop small { color: var(--muted); font-weight: 600; }
+.file-in { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+.custom-form { margin-top: 0; }
+.custom-form .pay { margin-bottom: 4px; }
+.custom-msg { font-size: .85rem; color: var(--muted); margin: 0; min-height: 1.2em; }
+.custom-msg.erro { color: #b30f5c; }
 /* Entrega */
 .ship { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
 .ship div { background: var(--pink-soft); border-radius: 20px; padding: 16px; }
@@ -250,9 +262,34 @@ footer img { width: 44px; height: 44px; border-radius: 50%; }
   <section id="produtos">
     <div class="wrap">
       <h2 class="sec-title">Nossos produtos</h2>
-      <p class="sec-sub">Toque em “Adicionar” e finalize na sacola.</p>
+      <p class="sec-sub">Toque em “Adicionar” e finalize na sacola. Quer um com a sua imagem? <a href="#personalizado">Peça um personalizado</a>.</p>
       <div class="chips" id="chips" role="group" aria-label="Filtrar por categoria"></div>
       <div class="grid" id="grid"></div>
+    </div>
+  </section>
+
+  <section id="personalizado">
+    <div class="wrap">
+      <h2 class="sec-title">Chaveiro personalizado</h2>
+      <p class="sec-sub">Tem um desenho, foto ou personagem favorito? Envie a imagem e a Carolina responde com valor e prazo.</p>
+      <div class="custom">
+        <label class="drop" for="fFoto">
+          <img id="fotoPrev" alt="Prévia da imagem escolhida" hidden>
+          <span id="dropTxt">Toque para escolher a imagem</span>
+          <small>JPG ou PNG</small>
+        </label>
+        <input class="file-in" id="fFoto" type="file" accept="image/*">
+        <div class="form custom-form">
+          <label for="cNome">Seu nome
+            <input id="cNome" type="text" placeholder="Como podemos te chamar?">
+          </label>
+          <label for="cObs">Como você quer?
+            <textarea id="cObs" placeholder="Tamanho, cores, nome para escrever..."></textarea>
+          </label>
+          <button class="pay" id="cSend" type="button" aria-disabled="true">Enviar para a Carolina pelo WhatsApp</button>
+          <p class="custom-msg" id="cMsg" role="status"></p>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -496,6 +533,77 @@ document.getElementById("form").addEventListener("submit", function (e) { e.prev
 
 document.getElementById("igLink").href = "https://instagram.com/" + LOJA.instagram;
 document.getElementById("waLink").href = "https://wa.me/" + LOJA.whatsapp;
+
+/* ---------- Chaveiro personalizado: envio da imagem ---------- */
+var FOTO_URL = "";
+function msgFoto(t, erro) {
+  var m = document.getElementById("cMsg");
+  m.textContent = t || "";
+  m.className = "custom-msg" + (erro ? " erro" : "");
+}
+function liberarEnvio() {
+  document.getElementById("cSend").setAttribute("aria-disabled", FOTO_URL ? "false" : "true");
+}
+function reduzir(file, lado, qualidade) {
+  return new Promise(function (ok, falha) {
+    var url = URL.createObjectURL(file);
+    var img = new Image();
+    img.onload = function () {
+      var w = img.naturalWidth, h = img.naturalHeight, f = Math.min(1, lado / Math.max(w, h));
+      var c = document.createElement("canvas");
+      c.width = Math.max(1, Math.round(w * f));
+      c.height = Math.max(1, Math.round(h * f));
+      var x = c.getContext("2d");
+      x.fillStyle = "#fff";
+      x.fillRect(0, 0, c.width, c.height);
+      x.drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      c.toBlob(function (b) { if (b) ok(b); else falha(new Error("abrir")); }, "image/jpeg", qualidade);
+    };
+    img.onerror = function () { URL.revokeObjectURL(url); falha(new Error("abrir")); };
+    img.src = url;
+  });
+}
+document.getElementById("fFoto").addEventListener("change", function (e) {
+  var file = e.target.files && e.target.files[0];
+  if (!file) return;
+  FOTO_URL = "";
+  liberarEnvio();
+  if (!/^image\//.test(file.type)) { msgFoto("Escolha um arquivo de imagem (JPG ou PNG).", true); return; }
+  msgFoto("Preparando a imagem...");
+  reduzir(file, 1280, 0.82).then(function (b) {
+    return b.size > 1400000 ? reduzir(file, 1000, 0.65) : b;
+  }).then(function (blob) {
+    var prev = document.getElementById("fotoPrev");
+    prev.src = URL.createObjectURL(blob);
+    prev.hidden = false;
+    document.getElementById("dropTxt").textContent = "Trocar imagem";
+    msgFoto("Enviando a imagem...");
+    return fetch(LOJA.pagamentoUrl + "/upload", { method: "POST", headers: { "Content-Type": "image/jpeg" }, body: blob });
+  }).then(function (r) {
+    return r.json().then(function (d) { return { ok: r.ok, d: d }; });
+  }).then(function (res) {
+    if (!res.ok || !res.d.url) throw new Error("enviar");
+    FOTO_URL = res.d.url;
+    liberarEnvio();
+    msgFoto("Imagem enviada! Agora é só mandar para a Carolina pelo WhatsApp.");
+  }).catch(function (err) {
+    msgFoto(err && err.message === "abrir"
+      ? "Não consegui abrir essa imagem. Tente outra em JPG ou PNG."
+      : "Não consegui enviar a imagem agora. Tente de novo ou mande direto pelo WhatsApp.", true);
+  });
+});
+document.getElementById("cSend").addEventListener("click", function () {
+  if (!FOTO_URL) { msgFoto("Escolha a imagem primeiro.", true); return; }
+  var nome = document.getElementById("cNome").value.trim();
+  var obs = document.getElementById("cObs").value.trim();
+  var msg = "Olá! Quero um chaveiro personalizado 💜\n" +
+    (nome ? "Nome: " + nome + "\n" : "") +
+    "Imagem: " + FOTO_URL +
+    (obs ? "\nDetalhes: " + obs : "") +
+    "\nPode me passar o valor e o prazo?";
+  window.open("https://wa.me/" + LOJA.whatsapp + "?text=" + encodeURIComponent(msg), "_blank", "noopener");
+});
 
 function pagar() {
   var btn = document.getElementById("pay"), err = document.getElementById("payErr");
